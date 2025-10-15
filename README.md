@@ -127,7 +127,7 @@ docker-compose up -d
 
 ---
 
-📌 Notes
+## 📌 Notes
 
 - Les dashboards Grafana sont préconfigurés pour afficher :
     - Temps de réponse API (moyenne, p95, p99)
