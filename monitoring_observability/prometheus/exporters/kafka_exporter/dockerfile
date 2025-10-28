@@ -1,0 +1,12 @@
+# Utiliser une image Python officielle
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY model_metrics_exporter.py model_metrics.json requirements.txt ./
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+EXPOSE 9101
+
+CMD ["python", "model_metrics_exporter.py"]
