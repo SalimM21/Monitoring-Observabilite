@@ -1,0 +1,44 @@
+# =====================================
+# Alert Rules - Prometheus
+# =====================================
+
+groups:
+  - name: api_alerts
+    rules:
+      # -----------------------------
+      # Alerte SLA : Latence API > 2s
+      # -----------------------------
+      - alert: HighAPILatency
+        expr: histogram_quantile(0.95, rate(request_processing_seconds_bucket[5m])) > 2
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Latence API élevée (> 2s)"
+          description: "L'API {{ $labels.job }} a une latence supérieure au SLA depuis plus de 2 minutes."
+
+      # -----------------------------
+      # Taux d'erreurs API 5xx > 5%
+      # -----------------------------
+      - alert: HighAPIErrorRate
+        expr: (sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m]))) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Taux d'erreurs API élevé (>5%)"
+          description: "L'API {{ $labels.job }} a un taux d'erreurs HTTP 5xx supérieur à 5% sur les 5 dernières minutes."
+
+  - name: ml_model_alerts
+    rules:
+      # -----------------------------
+      # Alerte dérive du modèle ML
+      # -----------------------------
+      - alert: ModelDriftDetected
+        expr: model_drift_score > 0.1
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Dérive du modèle détectée"
+          description: "Le score de dérive du modèle a dépassé le seuil critique (>0.1). Vérifier les données de production."
