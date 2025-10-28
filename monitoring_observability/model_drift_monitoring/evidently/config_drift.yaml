@@ -1,0 +1,37 @@
+# -----------------------------
+# Configuration du monitoring de dérive
+# -----------------------------
+monitoring:
+  frequency_minutes: 10   # Intervalle entre deux calculs de dérive
+
+# -----------------------------
+# Seuils globaux
+# -----------------------------
+thresholds:
+  global_drift_score: 0.1   # Score de dérive critique (alerte)
+  feature_drift_score: 0.05 # Seuil de dérive par feature
+
+# -----------------------------
+# Features à surveiller
+# -----------------------------
+features:
+  - name: age
+    type: numerical
+    threshold: 0.05
+    description: "Âge du client"
+  - name: income
+    type: numerical
+    threshold: 0.05
+    description: "Revenu annuel du client"
+  - name: country
+    type: categorical
+    threshold: 0.1
+    description: "Pays du client"
+  - name: gender
+    type: categorical
+    threshold: 0.1
+    description: "Genre du client"
+  - name: transaction_amount
+    type: numerical
+    threshold: 0.05
+    description: "Montant de la transaction"
