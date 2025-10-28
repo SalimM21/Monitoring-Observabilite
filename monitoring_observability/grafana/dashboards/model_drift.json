@@ -1,0 +1,94 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "model-drift",
+    "title": "ML Model Drift Dashboard",
+    "tags": ["ml", "model", "drift", "performance"],
+    "timezone": "browser",
+    "schemaVersion": 37,
+    "version": 1,
+    "refresh": "15s",
+    "panels": [
+      {
+        "type": "graph",
+        "title": "Model Accuracy Over Time",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "model_accuracy",
+            "legendFormat": "{{instance}}",
+            "refId": "A"
+          }
+        ],
+        "xaxis": {"mode": "time"},
+        "yaxis": {"format": "percent", "label": "Accuracy"},
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8}
+      },
+      {
+        "type": "graph",
+        "title": "Model Drift Score Over Time",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "model_drift_score",
+            "legendFormat": "{{instance}}",
+            "refId": "B"
+          }
+        ],
+        "xaxis": {"mode": "time"},
+        "yaxis": {"format": "short", "label": "Drift Score"},
+        "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8}
+      },
+      {
+        "type": "stat",
+        "title": "Last Accuracy",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "model_accuracy",
+            "refId": "C"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 0.7, "color": "orange"},
+                {"value": 0.85, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "type": "stat",
+        "title": "Last Drift Score",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "model_drift_score",
+            "refId": "D"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 4, "w": 6, "h": 4},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 0.05, "color": "orange"},
+                {"value": 0.1, "color": "red"}
+              ]
+            }
+          }
+        }
+      }
+    ]
+  }
+}
