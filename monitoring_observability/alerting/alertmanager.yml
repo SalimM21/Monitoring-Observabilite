@@ -1,0 +1,40 @@
+global:
+  resolve_timeout: 5m
+
+  # SMTP configuration pour alertes email
+  smtp_smarthost: 'smtp.example.com:587'
+  smtp_from: 'alertmanager@example.com'
+  smtp_auth_username: 'alertmanager@example.com'
+  smtp_auth_password: 'password'
+
+  # Slack configuration
+  slack_api_url: '${SLACK_WEBHOOK_URL}'
+
+route:
+  receiver: 'slack-notifications'
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 1h
+  routes:
+    - match:
+        alertname: "HighAPIResponseTime"
+      receiver: 'slack-notifications'
+    - match:
+        alertname: "ModelDriftDetected"
+      receiver: 'email-notifications'
+
+receivers:
+  - name: 'slack-notifications'
+    slack_configs:
+      - channel: '#alerts'
+        send_resolved: true
+
+  - name: 'email-notifications'
+    email_configs:
+      - to: 'team@example.com'
+        send_resolved: true
+        subject: '{{ .CommonAnnotations.summary }}'
+        html: '{{ template "email.default.html" . }}'
+
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
