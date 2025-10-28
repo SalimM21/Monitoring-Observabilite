@@ -1,0 +1,79 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "system-metrics",
+    "title": "System Metrics Dashboard",
+    "tags": ["system", "cpu", "memory", "disk", "network"],
+    "timezone": "browser",
+    "schemaVersion": 37,
+    "version": 1,
+    "refresh": "15s",
+    "panels": [
+      {
+        "type": "graph",
+        "title": "CPU Usage",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "100 - (avg by(instance)(irate(node_cpu_seconds_total{mode='idle'}[5m])) * 100)",
+            "legendFormat": "{{instance}}",
+            "refId": "A"
+          }
+        ],
+        "xaxis": {"mode": "time"},
+        "yaxis": {"format": "percent", "label": "CPU Usage"},
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8}
+      },
+      {
+        "type": "graph",
+        "title": "Memory Usage",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100",
+            "legendFormat": "{{instance}}",
+            "refId": "B"
+          }
+        ],
+        "xaxis": {"mode": "time"},
+        "yaxis": {"format": "percent", "label": "Memory Usage"},
+        "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8}
+      },
+      {
+        "type": "graph",
+        "title": "Disk Usage",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "100 - (node_filesystem_avail_bytes{mountpoint='/'} / node_filesystem_size_bytes{mountpoint='/'} * 100)",
+            "legendFormat": "Disk {{instance}}",
+            "refId": "C"
+          }
+        ],
+        "xaxis": {"mode": "time"},
+        "yaxis": {"format": "percent", "label": "Disk Usage"},
+        "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8}
+      },
+      {
+        "type": "graph",
+        "title": "Network Traffic",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "rate(node_network_receive_bytes_total[5m])",
+            "legendFormat": "Receive {{instance}}",
+            "refId": "D"
+          },
+          {
+            "expr": "rate(node_network_transmit_bytes_total[5m])",
+            "legendFormat": "Transmit {{instance}}",
+            "refId": "E"
+          }
+        ],
+        "xaxis": {"mode": "time"},
+        "yaxis": {"format": "bytes", "label": "Network"},
+        "gridPos": {"x": 0, "y": 24, "w": 12, "h": 8}
+      }
+    ]
+  }
+}
