@@ -1,0 +1,77 @@
+version: "3.8"
+
+services:
+  # -----------------------------
+  # Prometheus
+  # -----------------------------
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    ports:
+      - "9090:9090"
+    depends_on:
+      - alertmanager
+      - api_exporter
+      - model_exporter
+
+  # -----------------------------
+  # Grafana
+  # -----------------------------
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+  # -----------------------------
+  # Alertmanager
+  # -----------------------------
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    volumes:
+      - ./alerting/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    ports:
+      - "9093:9093"
+
+  # -----------------------------
+  # Exporter API (FastAPI)
+  # -----------------------------
+  api_exporter:
+    build: ./prometheus/exporters/fastapi_exporter
+    container_name: api_exporter
+    ports:
+      - "8001:8001"
+
+  # -----------------------------
+  # Exporter modèle ML
+  # -----------------------------
+  model_exporter:
+    build: ./prometheus/exporters/ml_model_exporter
+    container_name: model_exporter
+    ports:
+      - "9101:9101"
+
+  # -----------------------------
+  # Node Exporter (système)
+  # -----------------------------
+  node_exporter:
+    image: prom/node-exporter:latest
+    container_name: node_exporter
+    ports:
+      - "9100:9100"
+    restart: always
