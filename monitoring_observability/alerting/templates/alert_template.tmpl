@@ -1,0 +1,34 @@
+{{ define "alert.default.text" }}
+{{ range .Alerts }}
+Alert: {{ .Annotations.summary }}
+Status: {{ .Status }}
+Severity: {{ .Labels.severity }}
+
+Instance: {{ .Labels.instance }}
+Job: {{ .Labels.job }}
+Starts At: {{ .StartsAt }}
+Ends At: {{ .EndsAt }}
+
+Description: {{ .Annotations.description }}
+
+{{ if .Labels.alertname }}
+Alert Name: {{ .Labels.alertname }}
+{{ end }}
+
+{{ if gt (len .Labels) 0 }}
+Labels:
+{{ range $key, $value := .Labels }}
+  - {{ $key }}: {{ $value }}
+{{ end }}
+{{ end }}
+
+{{ if gt (len .Annotations) 0 }}
+Annotations:
+{{ range $key, $value := .Annotations }}
+  - {{ $key }}: {{ $value }}
+{{ end }}
+{{ end }}
+
+---
+{{ end }}
+{{ end }}
