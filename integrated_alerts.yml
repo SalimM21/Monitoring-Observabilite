@@ -1,0 +1,29 @@
+groups:
+  - name: integrated_alerts
+    rules:
+      - alert: DataQualityFailure
+        expr: data_quality_score < 0.8
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Qualité des données dégradée"
+          description: "Le score de qualité des données est inférieur à 80%"
+
+      - alert: ModelDriftDetected
+        expr: model_drift_score > 0.3
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Dérive du modèle détectée"
+          description: "Le score de dérive du modèle dépasse le seuil de 0.3"
+
+      - alert: AuditComplianceFailure
+        expr: compliance_violations_total > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Violation de conformité détectée"
+          description: "Une violation de conformité GDPR/KYC/AML a été détectée"

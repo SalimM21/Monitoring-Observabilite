@@ -1,0 +1,289 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: audit-collector
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: audit-collector
+  template:
+    metadata:
+      labels:
+        app: audit-collector
+    spec:
+      containers:
+      - name: audit-collector
+        image: python:3.9-slim
+        command: ["sh", "-c"]
+        args:
+        - |
+          pip install kafka-python &&
+          python -c "
+          import os
+          import json
+          import time
+          from datetime import datetime
+          from kafka import KafkaConsumer
+
+          # Configuration
+          BOOTSTRAP_SERVERS = 'my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092'
+          TOPICS = ['crm-customers', 'kyc-responses', 'scoring-requests', 'scoring-results']
+
+          def create_consumer(topic):
+              return KafkaConsumer(
+                  topic,
+                  bootstrap_servers=BOOTSTRAP_SERVERS,
+                  auto_offset_reset='earliest',
+                  enable_auto_commit=True,
+                  value_deserializer=lambda x: json.loads(x.decode('utf-8')),
+                  group_id=f'audit-collector-{topic}'
+              )
+
+          def log_audit_event(topic, event):
+              audit_entry = {
+                  'timestamp': datetime.utcnow().isoformat(),
+                  'topic': topic,
+                  'event_type': 'data_access',
+                  'user': 'system',
+                  'action': 'consume',
+                  'resource': topic,
+                  'data': event
+              }
+              print(f'[AUDIT] {json.dumps(audit_entry)}')
+
+          consumers = {}
+          for topic in TOPICS:
+              consumers[topic] = create_consumer(topic)
+
+          print('[AUDIT] Audit Collector démarré')
+          while True:
+              for topic, consumer in consumers.items():
+                  try:
+                      messages = consumer.poll(timeout_ms=1000)
+                      for tp, msgs in messages.items():
+                          for msg in msgs:
+                              log_audit_event(topic, msg.value)
+                  except Exception as e:
+                      print(f'[ERROR] Erreur audit {topic}: {e}')
+              time.sleep(5)
+          "
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gdpr-monitor
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gdpr-monitor
+  template:
+    metadata:
+      labels:
+        app: gdpr-monitor
+    spec:
+      containers:
+      - name: gdpr-monitor
+        image: python:3.9-slim
+        command: ["sh", "-c"]
+        args:
+        - |
+          pip install kafka-python &&
+          python -c "
+          import os
+          import json
+          import time
+          from datetime import datetime, timedelta
+          from kafka import KafkaConsumer
+
+          # Configuration
+          BOOTSTRAP_SERVERS = 'my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092'
+          TOPICS = ['crm-customers', 'kyc-responses']
+
+          def create_consumer(topic):
+              return KafkaConsumer(
+                  topic,
+                  bootstrap_servers=BOOTSTRAP_SERVERS,
+                  auto_offset_reset='earliest',
+                  enable_auto_commit=True,
+                  value_deserializer=lambda x: json.loads(x.decode('utf-8')),
+                  group_id=f'gdpr-monitor-{topic}'
+              )
+
+          def check_gdpr_compliance(data):
+              '''Vérifier la conformité GDPR des données'''
+              issues = []
+
+              # Vérifier la présence de données personnelles
+              if 'personal_info' in data:
+                  personal_info = data['personal_info']
+
+                  # Vérifier l'âge (consentement)
+                  if 'date_of_birth' in personal_info:
+                      try:
+                          birth_date = datetime.fromisoformat(personal_info['date_of_birth'].replace('Z', '+00:00'))
+                          age = (datetime.now() - birth_date).days // 365
+                          if age < 18:
+                              issues.append('Données mineur détectées')
+                      except:
+                          issues.append('Format date de naissance invalide')
+
+                  # Vérifier la finalité du traitement
+                  if 'purpose' not in data:
+                      issues.append('Finalité du traitement non spécifiée')
+
+              # Vérifier la durée de conservation
+              if 'timestamp' in data:
+                  try:
+                      data_date = datetime.fromtimestamp(data['timestamp'] / 1000)
+                      retention_days = (datetime.now() - data_date).days
+                      if retention_days > 365:  # 1 an max
+                          issues.append(f'Données conservées trop longtemps: {retention_days} jours')
+                  except:
+                      pass
+
+              return issues
+
+          consumers = {}
+          for topic in TOPICS:
+              consumers[topic] = create_consumer(topic)
+
+          print('[GDPR] GDPR Monitor démarré')
+          while True:
+              for topic, consumer in consumers.items():
+                  try:
+                      messages = consumer.poll(timeout_ms=1000)
+                      for tp, msgs in messages.items():
+                          for msg in msgs:
+                              issues = check_gdpr_compliance(msg.value)
+                              if issues:
+                                  alert = {
+                                      'timestamp': datetime.utcnow().isoformat(),
+                                      'topic': topic,
+                                      'customer_id': msg.value.get('customer_id', 'unknown'),
+                                      'issues': issues,
+                                      'severity': 'HIGH' if len(issues) > 1 else 'MEDIUM'
+                                  }
+                                  print(f'[GDPR ALERT] {json.dumps(alert)}')
+                  except Exception as e:
+                      print(f'[ERROR] Erreur GDPR {topic}: {e}')
+              time.sleep(10)
+          "
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aml-monitor
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aml-monitor
+  template:
+    metadata:
+      labels:
+        app: aml-monitor
+    spec:
+      containers:
+      - name: aml-monitor
+        image: python:3.9-slim
+        command: ["sh", "-c"]
+        args:
+        - |
+          pip install kafka-python &&
+          python -c "
+          import os
+          import json
+          import time
+          from datetime import datetime
+          from kafka import KafkaConsumer
+
+          # Configuration
+          BOOTSTRAP_SERVERS = 'my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092'
+          TOPIC = 'transactions'
+
+          def create_consumer():
+              return KafkaConsumer(
+                  TOPIC,
+                  bootstrap_servers=BOOTSTRAP_SERVERS,
+                  auto_offset_reset='earliest',
+                  enable_auto_commit=True,
+                  value_deserializer=lambda x: json.loads(x.decode('utf-8')),
+                  group_id='aml-monitor'
+              )
+
+          def check_aml_risk(transaction):
+              '''Analyser les risques AML d'une transaction'''
+              alerts = []
+
+              amount = transaction.get('amount', 0)
+              customer_id = transaction.get('customer_id', 'unknown')
+
+              # Seuils de détection AML
+              if amount > 10000:  # Transaction importante
+                  alerts.append({
+                      'type': 'HIGH_VALUE_TRANSACTION',
+                      'customer_id': customer_id,
+                      'amount': amount,
+                      'threshold': 10000
+                  })
+
+              # Vérifier les patterns suspects
+              if transaction.get('merchant', '').upper() in ['CASINO', 'CRYPTO', 'GAMBLING']:
+                  alerts.append({
+                      'type': 'SUSPICIOUS_MERCHANT',
+                      'customer_id': customer_id,
+                      'merchant': transaction.get('merchant')
+                  })
+
+              # Transactions fréquentes importantes
+              # (Logique simplifiée - en production utiliser un système plus sophistiqué)
+
+              return alerts
+
+          consumer = create_consumer()
+          print('[AML] AML Monitor démarré')
+
+          while True:
+              try:
+                  messages = consumer.poll(timeout_ms=1000)
+                  for tp, msgs in messages.items():
+                      for msg in msgs:
+                          alerts = check_aml_risk(msg.value)
+                          for alert in alerts:
+                              alert_entry = {
+                                  'timestamp': datetime.utcnow().isoformat(),
+                                  'alert_type': 'AML_RISK',
+                                  'severity': 'HIGH',
+                                  **alert
+                              }
+                              print(f'[AML ALERT] {json.dumps(alert_entry)}')
+              except Exception as e:
+                  print(f'[ERROR] Erreur AML: {e}')
+              time.sleep(5)
+          "
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
